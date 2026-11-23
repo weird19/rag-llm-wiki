@@ -37,10 +37,31 @@
 - **Query（查詢）**：從 Wiki 尋找證據，作答時附來源、版本和原文位置。缺乏證據的部分會明確標示。
 - **Lint（查核）**：檢查連結、錨點、來源代號、索引和孤立頁，再另外比對原文確認主張是否受到支持。
 
-## Workflow、Graph 與驗證
+本專案以 LLM Wiki 整合 RAG 研究知識，透過資料取得、Ingest、Query、Lint 與來源驗證，將知識轉換為教學型 HTML 簡報。
 
-[工作流程](docs/workflow.md)說明資料取得、入庫、查詢、查核、簡報生成及瀏覽器驗證。[流程反思](docs/workflow-reflection.md)收錄前後兩張 Mermaid Graph，記錄下載重試、證據修正、教學改版及複驗的返回路徑。
+### Workflow 總覽
 
-- **Wiki**：五篇指定版本已入庫，10 個知識頁皆有索引及入站連結。整體驗收核對 25 個證據區塊並完成五題跨來源 Query。不同 Chunking 策略的效果仍待補證。[Wiki 驗收](docs/final-wiki-validation.md)
-- **簡報**：最近一次 Edge 離線驗證逐頁測試三種 16:9 桌面及一種手機尺寸。完成導覽、來源開合、示範與練習檢查。[簡報驗證](docs/slide-validation.md)
+```mermaid
+flowchart LR
+    A["取得與驗證資料"] --> B["Ingest Wiki"]
+    B --> C["Lint / Query"]
+    C --> D{"內容與來源正確？"}
+    D -->|通過| E["生成 HTML 簡報"]
+    D -->|未通過| B
+    E --> F{"簡報驗收"}
+    F -->|通過| G["完成成果"]
+    F -->|需修正| E
+```
+
+此圖呈現主要的作業流程與回饋循環。完整的檢查節點、資料取得重試及流程改善紀錄請參閱詳細文件。
+
+### 驗證結果
+
+- **Wiki**：五篇指定版本已入庫，10 個知識頁皆有索引及入站連結。整體驗收核對 25 個證據區塊，並完成五題跨來源 Query。不同 Chunking 策略的效果仍待補證。[Wiki 驗收](docs/final-wiki-validation.md)
+- **簡報**：最近一次 Edge 離線驗證逐頁測試三種 16:9 桌面及一種手機尺寸，完成導覽、來源開合、示範與練習檢查。[簡報驗證](docs/slide-validation.md)
 - **執行紀錄**：入庫、錯誤、修正與複驗皆可回查。[操作日誌](wiki/log.md)
+
+### 詳細流程與反思
+
+- [完整工作流程](docs/workflow.md)：資料取得、入庫、查詢、查核、簡報生成及瀏覽器驗證。
+- [流程改善與反思](docs/workflow-reflection.md)：改善前後的 Mermaid Graph、錯誤分析、檢查提前與複驗紀錄。
