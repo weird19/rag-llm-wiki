@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RAG 是什麼？｜檢索增強生成入門</title>
+<style>
+:root {
+  color-scheme: light;
+  --navy:#101e30; --paper:#f7f3e9; --ink:#172735; --green:#15564c;
+  --mint:#dbe9df; --gold:#eabd75; --line:#cdd5cd; --muted:#4c5b60;
+  --control:clamp(14px,1.36vw,18px);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.48 system-ui,"Microsoft JhengHei",sans-serif}
+h1,h2,h3,p,figure,blockquote,ol{margin:0}
+button{font:inherit;font-size:var(--control);font-weight:700;border:1px solid currentColor;border-radius:.4rem;padding:.4em .8em;color:var(--green);background:transparent;cursor:pointer}
+button:hover:not(:disabled),button[aria-pressed=true]{background:var(--mint)}
+button:disabled{opacity:.5;cursor:default}
+button.primary{background:var(--green);color:white}
+button.primary:hover:not(:disabled){background:#103e36}
+:focus-visible{outline:3px solid #a36014;outline-offset:3px}
+[hidden]{display:none!important}
+.shell{min-height:100dvh;display:grid;grid-template-rows:auto 1fr auto}
+.toolbar,footer{background:var(--navy);color:var(--paper);padding:.48rem max(1rem,calc((100% - 1160px)/2));display:flex;align-items:center;justify-content:space-between;gap:.6rem}
+.toolbar h1{font-size:clamp(16px,1.8vw,20px);font-weight:600}
+.toolbar span{color:#f4d299;font-size:clamp(13px,1.45vw,16px);font-weight:500}
+footer{position:sticky;bottom:0;z-index:2}
+footer button{color:var(--paper);border-color:#85989c;white-space:nowrap}
+footer button:hover:not(:disabled){background:#29483f}
+.indicator{display:flex;align-items:center;gap:.65rem;width:min(40%,340px)}
+#count{white-space:nowrap;font-size:var(--control);font-variant-numeric:tabular-nums}
+progress{width:100%;height:.48rem;accent-color:var(--gold)}
+main{display:grid;align-items:center;min-width:0}
+.slide{
+  --core:clamp(17px,1.72vw,22px);
+  --diagram:clamp(15px,1.41vw,18px);
+  --secondary:clamp(15px,1.56vw,20px);
+  --figure-heading:clamp(18px,1.72vw,22px);
+  position:relative;width:min(100%,1160px);margin:auto;
+  padding:clamp(.7rem,2.2vh,1.35rem) clamp(1rem,3.1vw,2.4rem);overflow-wrap:break-word;
+}
+.eyebrow{
+  display:inline-block;padding:6px 12px;border-radius:8px;background:var(--mint);
+  color:var(--green);font-size:clamp(13px,1.2vw,15px);font-weight:600;line-height:1.25;
+}
+h2{font-size:clamp(28px,3.44vw,44px);font-weight:700;line-height:1.14;letter-spacing:-.025em;margin:12px 0 .34rem;text-wrap:balance}
+.cover h2{font-size:clamp(38px,4.69vw,60px)}
+h3,.rail strong{font-size:var(--figure-heading);font-weight:600;line-height:1.24}
+h3{margin:0 0 .25rem}
+.goal,.context-note{color:var(--muted);font-size:var(--secondary);line-height:1.4}
+.body{font-size:var(--core);margin:clamp(.65rem,2.35vh,1.35rem) 0 .7rem}
+.context-note{margin-top:.6rem}
+.takeaway{padding:.44rem .72rem;margin-bottom:.52rem;border-left:3px solid var(--gold);background:#eee8da;color:#243932;font-weight:650;font-size:var(--secondary);line-height:1.4}
+.hero,.exercise,.extensions{display:grid;grid-template-columns:1fr 1fr;gap:clamp(.75rem,2.4vw,1.6rem)}
+.hero{align-items:center;grid-template-columns:.85fr 1.15fr}
+.hero-copy{display:grid;gap:.8rem}.hero-copy button{justify-self:start}
+.hero-art{border-radius:.9rem;background:var(--navy);overflow:hidden}
+.hero-art svg{display:block;width:100%;max-height:min(41vh,330px)}
+.routes{display:grid;gap:.6rem}
+.common-question{color:var(--green);font-weight:800;font-size:var(--diagram)}
+.route{padding:.55rem .8rem;border-left:3px solid #af8a54;background:#eee8da}
+.route.grounded{background:var(--mint);border-color:var(--green)}
+.route span{color:var(--green);font-weight:800;padding-inline:.2em}
+mark{background:#f4d99e;color:var(--ink);padding:0 .16em;border-radius:.15em}
+.handoff{display:grid;grid-template-columns:1fr minmax(8rem,.8fr) 1fr;align-items:center;text-align:center}
+.handoff-node{border-block:2px solid var(--green);background:var(--mint);padding:.8rem .5rem}
+.handoff-node small,.flow-label,.join{color:var(--green);font-weight:800;font-size:var(--diagram)}
+.handoff-bridge{font-size:var(--diagram);padding:.25rem;color:var(--green)}
+.handoff-bridge b{display:block;font-size:2.1rem;line-height:1}
+.handoff-node p{font-size:var(--diagram)}
+.rail{list-style:none;padding:0;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:1.5rem}
+.rail li{position:relative;min-width:0;padding:.6rem .65rem;border-top:3px solid var(--green);background:#ebece2;font-size:var(--diagram)}
+.rail li:not(:last-child)::after{content:"→";position:absolute;left:calc(100% + .28rem);top:26%;color:var(--green);font-weight:850}
+.rail small{display:block;color:var(--muted);font-size:var(--diagram);margin-top:.2rem}
+.rail .focus-node{background:var(--mint)}
+.flow-label{margin:.18rem 0}.join{text-align:center;margin:.25rem 0}
+.fault-flow li{border-color:#a17347;background:#f0e9da}
+.case-track{display:flex;flex-wrap:wrap;gap:.42rem;margin-bottom:.55rem;font-size:var(--diagram)}
+.case-view{padding:.55rem .7rem;margin-bottom:.5rem;border:1px solid var(--line);background:#fffdf6;font-size:var(--diagram);min-height:7.4rem}
+.case-view .evidence,.exercise blockquote{padding:.38rem .6rem;border-left:3px solid #b78c50;background:#eee8da}
+.case-docs{padding-left:1.2rem}.case-docs li+li{margin-top:.2rem}
+.exercise div,.exercise form{min-width:0}
+.exercise blockquote,.exercise label{font-size:var(--diagram)}
+.exercise label{display:block;padding:.23rem .36rem;border-left:3px solid transparent}
+.exercise label.supported{background:var(--mint);border-color:var(--green)}
+.exercise label.unsupported{background:#f3dfd7;border-color:#9a4934}
+.exercise button{margin-top:.4rem}
+.verdict{font-size:.86em;font-weight:800}
+.feedback{color:var(--green);font-size:var(--diagram);margin-top:.45rem}
+.extensions{font-size:var(--diagram);gap:.55rem;margin-top:.55rem}
+.extensions p{border-top:1px solid var(--line);padding:.36rem .2rem 0}
+.sources{border-top:1px solid var(--line);padding-top:.22rem;font-size:clamp(13px,1.25vw,16px)}
+.sources summary{cursor:pointer;color:var(--green);font-weight:750;width:fit-content}
+.source-panel{position:absolute;z-index:3;bottom:2.55rem;left:clamp(1rem,3.1vw,2.4rem);right:clamp(1rem,3.1vw,2.4rem);padding:.65rem .85rem;background:#fffdf6;border:1px solid var(--line);border-radius:.45rem;box-shadow:0 6px 20px #101e3030;max-height:40vh;overflow:auto}
+.source-panel div{display:flex;gap:.18rem .65rem;flex-wrap:wrap;margin-bottom:.3rem}
+.source-panel a{color:var(--green);text-underline-offset:.15em}
+@media(max-width:670px){
+  .hero,.exercise,.extensions{grid-template-columns:1fr;gap:.6rem}
+  .hero-art svg{max-height:28vh}
+  .rail{grid-auto-flow:row;grid-auto-columns:auto;gap:1.05rem}
+  .rail li:not(:last-child)::after{content:"↓";left:.7rem;top:100%;line-height:1.05rem}
+  .handoff{grid-template-columns:1fr}.handoff-bridge b{font-size:1.6rem;transform:rotate(90deg);width:fit-content;margin:auto}
+  .source-panel{position:static;max-height:none;margin-top:.3rem}
+}
+@media(max-height:650px) and (min-width:671px){
+  .cover .hero-art svg{max-height:37vh}
+  #slide-4 .body,#slide-8 .body{margin-block:.55rem}
+  #slide-4 .rail li{padding-block:.4rem}
+  #slide-8 .exercise label{padding-block:.15rem}
+}
+@media(max-width:380px){.toolbar,footer{padding-inline:.65rem}}
+.search-flow .glyph{height:24px;margin:.4rem 0 .2rem;display:flex;align-items:center;gap:4px;color:var(--green)}
+.search-flow .glyph i{display:block;width:12px;height:12px;background:currentColor;border-radius:2px}
+.search-flow .glyph .muted{opacity:.30}
+.search-flow .glyph.tokens i{width:18px;height:15px;border:1px solid currentColor;background:transparent}
+.search-flow .glyph.scores,.search-flow .glyph.top{display:grid;align-content:center;gap:3px}
+.search-flow .glyph.scores i,.search-flow .glyph.top i{height:4px}
+.search-flow .glyph.scores i:nth-child(1),.search-flow .glyph.top i:nth-child(1){width:50px}
+.search-flow .glyph.scores i:nth-child(2),.search-flow .glyph.top i:nth-child(2){width:36px}
+.search-flow .glyph.scores i:nth-child(3),.search-flow .glyph.top i:nth-child(3){width:22px}
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="toolbar"><h1>RAG 入門</h1><span id="part">核心概念</span></header>
+  <main>
+    <section class="slide cover" id="slide-1" aria-labelledby="title-1">
+      <header class="slide-heading"><p class="eyebrow">入門</p><h2 id="title-1" tabindex="-1">RAG 是什麼？</h2><p class="goal">Retrieval-Augmented Generation｜檢索增強生成</p></header>
+      <div class="body"><div class="hero"><div class="hero-copy"><p>當你問一個問題，系統可以先從外部文件找出有關段落，再把<strong>問題和段落</strong>一起交給語言模型。</p><button class="primary" data-go="1">開始了解 RAG →</button></div><figure class="hero-art"><svg viewBox="0 0 620 320" role="img" aria-labelledby="cover-title"><title id="cover-title">從文件庫選出一段證據，將它交給語言模型協助生成回答</title><defs><pattern id="grid" width="25" height="25" patternUnits="userSpaceOnUse"><path d="M25 0H0V25" fill="none" stroke="#92b5ae" opacity=".18"/></pattern></defs><rect width="620" height="320" rx="18" fill="#13293b"/><rect width="620" height="320" fill="url(#grid)"/><g fill="none" stroke="#729489" stroke-width="2"><rect x="70" y="72" width="95" height="116" rx="8"/><rect x="87" y="89" width="95" height="116" rx="8"/></g><rect x="104" y="106" width="95" height="116" rx="8" fill="#214d4a" stroke="#b8d8c8" stroke-width="2"/><path d="M124 136h54m-54 17h44m-44 43h54" stroke="#b8d8c8" stroke-width="4"/><rect x="119" y="169" width="64" height="13" rx="4" fill="#eabd75"/><path d="M204 175h85m-11-10 12 10-12 10m80-10h78m-11-10 12 10-12 10" stroke="#eabd75" stroke-width="3" fill="none"/><circle cx="324" cy="175" r="29" fill="#214d4a" stroke="#eabd75" stroke-width="2"/><path d="M312 175l8 8 16-19" stroke="#eabd75" stroke-width="3" fill="none"/><path d="M454 114h93a12 12 0 0 1 12 12v70a12 12 0 0 1-12 12h-48l-25 19v-19h-20a12 12 0 0 1-12-12v-70a12 12 0 0 1 12-12Z" fill="#dbe9df"/><path d="M462 144h76m-76 19h64m-64 19h46" stroke="#15564c" stroke-width="4"/><g fill="#fff5e4" font-family="system-ui,sans-serif" font-size="20" font-weight="700" text-anchor="middle"><text x="145" y="267">外部文件</text><text x="324" y="267">相關段落</text><text x="501" y="267">生成回答</text></g></svg></figure></div></div>
+      <p class="takeaway">先找相關資料，再用找到的資料幫助語言模型回答。</p>
+      <details class="sources"><summary>Wiki 來源 · S01</summary><div class="source-panel"><div><b>概念頁</b> <a href="../wiki/concepts/rag-basics.md">RAG 基本原理</a></div><div><b>原文定位</b> <a href="../wiki/sources/S01.md#evidence-01">S01（S001-v4） §1、圖 1，頁 1–2</a></div><a href="../docs/slide-source-map.md">逐頁來源對應表</a></div></details>
+    </section>
+    <section class="slide" id="slide-2" aria-labelledby="title-2" hidden>
+      <header class="slide-heading"><p class="eyebrow">動機</p><h2 id="title-2" tabindex="-1">為什麼需要 RAG？</h2><p class="goal">比較同一個問題的兩條作答路徑。</p></header>
+      <div class="body"><figure class="routes" aria-label="直接作答與取回資料後作答的對照"><div class="common-question">同一個使用者問題</div><div class="route"><h3>直接由語言模型作答</h3><p>問題 <span>→</span> 模型以訓練所得的知識作答</p></div><div class="route grounded"><h3>使用 RAG 作答</h3><p>問題 <span>→</span> <mark>查到的相關段落</mark> <span>→</span> 模型依問題與段落作答</p></div></figure><p class="context-note">第二條路徑讓回答能參考當次取得、可以回頭查核的資料。</p></div>
+      <p class="takeaway">RAG 增加了可核對的外部依據。</p>
+      <details class="sources"><summary>Wiki 來源 · S01</summary><div class="source-panel"><div><b>概念頁</b> <a href="../wiki/concepts/rag-basics.md">RAG 基本原理</a></div><div><b>原文定位</b> <a href="../wiki/sources/S01.md#evidence-01">S01（S001-v4） §1、圖 1，頁 1–2</a> <a href="../wiki/sources/S01.md#evidence-02">S01（S001-v4） §2.2–2.3，頁 3</a></div><a href="../docs/slide-source-map.md">逐頁來源對應表</a></div></details>
+    </section>
+    <section class="slide" id="slide-3" aria-labelledby="title-3" hidden>
+      <header class="slide-heading"><p class="eyebrow">核心概念</p><h2 id="title-3" tabindex="-1">檢索與生成怎麼配合？</h2><p class="goal">先分清兩項工作，就能讀懂後面的完整流程。</p></header>
+      <div class="body"><figure class="handoff" aria-label="檢索把相關段落交給生成模型"><div class="handoff-node"><small>Retrieval</small><h3>檢索</h3><p>用問題查找相關段落</p></div><div class="handoff-bridge"><span>問題＋找到的段落</span><b aria-hidden="true">⟶</b></div><div class="handoff-node"><small>Generation</small><h3>生成</h3><p>依輸入組織回答</p></div></figure></div>
+      <p class="takeaway">檢索負責找資料，生成負責用資料回答。</p>
+      <details class="sources"><summary>Wiki 來源 · S01</summary><div class="source-panel"><div><b>概念頁</b> <a href="../wiki/concepts/rag-basics.md">RAG 基本原理</a></div><div><b>原文定位</b> <a href="../wiki/sources/S01.md#evidence-01">S01（S001-v4） §1、圖 1，頁 1–2</a> <a href="../wiki/sources/S01.md#evidence-02">S01（S001-v4） §2.2–2.3，頁 3</a></div><a href="../docs/slide-source-map.md">逐頁來源對應表</a></div></details>
+    </section>
+    <section class="slide" id="slide-4" aria-labelledby="title-4" hidden>
+      <header class="slide-heading"><p class="eyebrow">流程</p><h2 id="title-4" tabindex="-1">RAG 如何運作？</h2><p class="goal">把資料準備和回答當下的工作分開看。</p></header>
+      <div class="body"><figure class="data-flow" aria-label="文件準備與提問流程在檢索會合"><div class="flow-label">資料準備</div><ol class="rail"><li>外部文件</li><li>整理成段落</li><li class="focus-node">知識索引<small>讓段落可以被查找</small></li></ol><div class="join" aria-hidden="true">索引供檢索查找 ↓</div><div class="flow-label">回答當下</div><ol class="rail"><li>使用者提問</li><li class="focus-node">檢索相關段落</li><li>LLM 生成答案<small>大型語言模型使用問題與段落</small></li></ol></figure><p class="context-note">上圖是應用流程示意。S01 的原始模型以 DPR 初始化檢索器，並由 BART 根據問題與各候選段落估計輸出。</p></div>
+      <p class="takeaway">先讓文件可被查找，提問時再檢索、生成。</p>
+      <details class="sources"><summary>Wiki 來源 · S01 · S02</summary><div class="source-panel"><div><b>概念頁</b> <a href="../wiki/concepts/rag-basics.md">RAG 基本原理</a> <a href="../wiki/concepts/dense-passage-retrieval.md">DPR</a></div><div><b>原文定位</b> <a href="../wiki/sources/S01.md#evidence-02">S01（S001-v4） §2.2–2.3，頁 3</a> <a href="../wiki/sources/S01.md#evidence-03">S01（S001-v4） §2.1，頁 3</a> <a href="../wiki/sources/S02.md#evidence-02">S02（S002-v3） §3.1，頁 2–3</a></div><a href="../docs/slide-source-map.md">逐頁來源對應表</a></div></details>
+    </section>
+    <section class="slide" id="slide-5" aria-labelledby="title-5" hidden>
+      <header class="slide-heading"><p class="eyebrow">基本檢索</p><h2 id="title-5" tabindex="-1">相關資料是怎麼找到的？</h2><p class="goal">先看懂段落、向量與排序，再認識一種研究方法。</p></header>
+      <div class="body"><figure class="search-flow" aria-label="從切分文件到向量排序"><ol class="rail"><li><strong>Chunking／切分</strong><span class="glyph tokens" aria-hidden="true"><i></i><i></i><i></i></span><small>把文件整理成段落</small></li><li><strong>Embedding／嵌入</strong><span class="glyph" aria-hidden="true"><i></i><i class="muted"></i><i></i><i class="muted"></i></span><small>把問題與段落表示成向量，一組數字</small></li><li><strong>向量檢索</strong><span class="glyph scores" aria-hidden="true"><i></i><i></i><i></i></span><small>比較向量、依分數排序</small></li><li class="focus-node"><strong>Top-K</strong><span class="glyph top" aria-hidden="true"><i></i><i></i><i class="muted"></i></span><small>取排名前 K 段</small></li></ol></figure><p class="context-note"><b>DPR 是一種做法</b>：分別編碼問題與段落，以向量內積排序。Wiki 的證據支持這個做法與 S02 的切分設定；不同切分或嵌入策略的效果比較待補證。</p></div>
+      <p class="takeaway">把段落轉成可比較的形式，找出分數最高的候選。</p>
+      <details class="sources"><summary>Wiki 來源 · S02</summary><div class="source-panel"><div><b>概念頁</b> <a href="../wiki/concepts/dense-passage-retrieval.md">DPR</a></div><div><b>原文定位</b> <a href="../wiki/sources/S02.md#evidence-02">S02（S002-v3） §3.1，頁 2–3</a> <a href="../wiki/sources/S02.md#evidence-04">S02（S002-v3） §4.1、§5.1 表 2，頁 4–5</a></div><a href="../docs/slide-source-map.md">逐頁來源對應表</a></div></details>
+    </section>
+    <section class="slide" id="slide-6" aria-labelledby="title-6" hidden>
+      <header class="slide-heading"><p class="eyebrow">優勢與限制</p><h2 id="title-6" tabindex="-1">有外部資料，就一定會答對嗎？</h2><p class="goal">分辨同一個錯誤答案可能從哪一步發生。</p></header>
+      <div class="body"><figure class="fault-flow" aria-label="三個可獨立發生的錯誤點"><ol class="rail"><li><strong>取回候選</strong><small>檢索可能漏掉證據</small></li><li><strong>組成輸入</strong><small>組裝可能省略已取回的證據</small></li><li><strong>生成回答</strong><small>模型可能用錯已收到的證據</small></li></ol></figure><p class="context-note">S03 的受控多文件問答中，答案段落一直在輸入裡；部分受測條件下，放在中間時的表現較差。這取決於模型、任務與輸入配置。</p></div>
+      <p class="takeaway">資料可補充模型知識，答案仍取決於證據是否被找到、送入並用對。</p>
+      <details class="sources"><summary>Wiki 來源 · S01 · S03</summary><div class="source-panel"><div><b>概念頁</b> <a href="../wiki/concepts/rag-basics.md">RAG 基本原理</a> <a href="../wiki/concepts/context-position.md">上下文中的證據位置</a></div><div><b>原文定位</b> <a href="../wiki/sources/S01.md#evidence-01">S01（S001-v4） §1、圖 1，頁 1–2</a> <a href="../wiki/sources/S01.md#evidence-02">S01（S001-v4） §2.2–2.3，頁 3</a> <a href="../wiki/sources/S03.md#evidence-01">S03（S003-v3） §2.1、圖 3，頁 3–4</a> <a href="../wiki/sources/S03.md#evidence-02">S03（S003-v3） §2.3、圖 5，頁 5</a></div><a href="../docs/slide-source-map.md">逐頁來源對應表</a></div></details>
+    </section>
+    <section class="slide" id="slide-7" aria-labelledby="title-7" hidden>
+      <header class="slide-heading"><p class="eyebrow">案例｜虛構教學示例</p><h2 id="title-7" tabindex="-1">看 AI 文件問答助手跑一次</h2><p class="goal">依序打開提問、檢索、證據和生成四步。</p></header>
+      <div class="body"><div id="case-track" class="case-track" role="group" aria-label="案例步驟"><button type="button" data-case="0" aria-controls="case-view" aria-pressed="false">1．提問</button><button type="button" data-case="1" aria-controls="case-view" aria-pressed="false">2．檢索</button><button type="button" data-case="2" aria-controls="case-view" aria-pressed="false">3．取得證據</button><button type="button" data-case="3" aria-controls="case-view" aria-pressed="false">4．生成回答</button></div><div id="case-view" class="case-view" aria-live="polite"></div><button id="case-next" type="button" class="primary">下一步 →</button></div>
+      <p class="takeaway">關鍵句是回答的依據，可回到原文件核對。</p>
+      <details class="sources"><summary>Wiki 來源 · S01</summary><div class="source-panel"><div><b>概念頁</b> <a href="../wiki/concepts/rag-basics.md">RAG 基本原理</a></div><div><b>原文定位</b> <a href="../wiki/sources/S01.md#evidence-02">S01（S001-v4） §2.2–2.3，頁 3</a></div><a href="../docs/slide-source-map.md">逐頁來源對應表</a></div></details>
+    </section>
+    <section class="slide" id="slide-8" aria-labelledby="title-8" hidden>
+      <header class="slide-heading"><p class="eyebrow">練習｜虛構教學示例</p><h2 id="title-8" tabindex="-1">哪些回答主張有文件支持？</h2><p class="goal">勾選所有受支持的主張，再逐條看回饋。</p></header>
+      <div class="body"><div class="exercise"><div><h3>虛構課程文件</h3><blockquote id="quiz-evidence"></blockquote></div><form id="quiz"><h3>虛構 AI 回答主張</h3><label><input type="checkbox" name="pair" value="pair"> 期末專案可以兩人一組。 <span class="verdict"></span></label><label><input type="checkbox" name="report" value="report"> 每組要繳交一份報告。 <span class="verdict"></span></label><label><input type="checkbox" name="three" value="three"> 三人也可以組隊。 <span class="verdict"></span></label><button type="submit" class="primary">檢查答案</button></form></div><p id="quiz-result" class="feedback" role="status"></p></div>
+      <p class="takeaway">回答切合問題之外，還要逐項確認文件是否支持。</p>
+      <details class="sources"><summary>Wiki 來源 · S04</summary><div class="source-panel"><div><b>概念頁</b> <a href="../wiki/concepts/rag-evaluation.md">RAG 評估</a></div><div><b>原文定位</b> <a href="../wiki/sources/S04.md#evidence-02">S04（S004-v2） §3 忠實度，頁 3</a></div><a href="../docs/slide-source-map.md">逐頁來源對應表</a></div></details>
+    </section>
+    <section class="slide" id="slide-9" aria-labelledby="title-9" hidden>
+      <header class="slide-heading"><p class="eyebrow">總結與延伸</p><h2 id="title-9" tabindex="-1">怎麼知道回答站得住腳？</h2><p class="goal">用三個檢查點回顧 RAG，再認識兩個延伸方向。</p></header>
+      <div class="body"><figure aria-label="候選、實際輸入和答案的查核流程"><ol class="rail"><li><strong>候選段落</strong><small>取回分組規定了嗎？</small></li><li><strong>實際輸入</strong><small>模型收到「最多兩人」了嗎？</small></li><li><strong>答案主張</strong><small>分組結論受文件支持嗎？</small></li></ol></figure><p class="context-note">以虛構課程案例回顧：外部文件能補充模型知識；漏取、漏送或用錯都可能造成錯答。</p><div class="extensions"><p><b>品質評估</b>：分開看檢索、證據支撐與答案是否切題。</p><p><b>Self-RAG</b>：特定設計在生成過程中按需檢索，並用反思標記評估續寫。標記也可能誤判。</p></div></div>
+      <p class="takeaway">先確認取回什麼，再核對模型收到什麼和回答說了什麼。</p>
+      <details class="sources"><summary>Wiki 來源 · S01 · S02 · S03 · S04 · S05</summary><div class="source-panel"><div><b>概念頁</b> <a href="../wiki/concepts/rag-basics.md">RAG 基本原理</a> <a href="../wiki/concepts/context-position.md">上下文中的證據位置</a> <a href="../wiki/concepts/rag-evaluation.md">RAG 評估</a> <a href="../wiki/concepts/self-rag.md">Self-RAG</a></div><div><b>原文定位</b> <a href="../wiki/sources/S01.md#evidence-01">S01（S001-v4） §1、圖 1，頁 1–2</a> <a href="../wiki/sources/S03.md#evidence-02">S03（S003-v3） §2.3、圖 5，頁 5</a> <a href="../wiki/sources/S02.md#evidence-04">S02（S002-v3） §4.1、§5.1 表 2，頁 4–5</a> <a href="../wiki/sources/S04.md#evidence-02">S04（S004-v2） §3 忠實度，頁 3</a> <a href="../wiki/sources/S04.md#evidence-03">S04（S004-v2） §3 式 1，頁 3</a> <a href="../wiki/sources/S05.md#evidence-02">S05（S005-v1） §3.1 演算法 1，頁 4</a> <a href="../wiki/sources/S05.md#evidence-04">S05（S005-v1） §3.1 表 1、§3.3，頁 4、6</a> <a href="../wiki/sources/S05.md#evidence-06">S05（S005-v1） 附錄 C.2 表 6，頁 21、24</a></div><a href="../docs/slide-source-map.md">逐頁來源對應表</a></div></details>
+    </section>
+  </main>
+  <footer aria-label="簡報導覽">
+    <button type="button" id="prev" aria-keyshortcuts="ArrowLeft" disabled>← 上一頁</button>
+    <div class="indicator"><span id="count" aria-live="polite">1 / 9</span><progress id="progress" value="1" max="9" aria-label="簡報進度"></progress></div>
+    <button type="button" id="next" aria-keyshortcuts="ArrowRight">下一頁 →</button>
+  </footer>
+</div>
+<script>
+const question = '這門課的期末專案可以兩人一組嗎？';
+const grouping = '本課程期末專案允許個人或兩人一組完成，最多兩人。';
+const deliverables = '每組需繳交一份報告與展示成果。';
+const answer = '可以。期末專案可以個人完成，也可以兩人一組，最多兩人。';
+const slides = [...document.querySelectorAll('.slide')];
+const previous = document.querySelector('#prev');
+const next = document.querySelector('#next');
+const caseButtons = [...document.querySelectorAll('[data-case]')];
+const caseView = document.querySelector('#case-view');
+const caseNext = document.querySelector('#case-next');
+const quiz = document.querySelector('#quiz');
+const quizFeedback = document.querySelector('#quiz-result');
+const claims = [
+  { id:'pair', supported:true, note:'有支持。「允許個人或兩人一組」。' },
+  { id:'report', supported:true, note:'有支持。「每組需繳交一份報告」。' },
+  { id:'three', supported:false, note:'不受支持。文件寫「最多兩人」。' }
+];
+let current = 0;
+let caseStep = 0;
+
+function renderCase(step) {
+  caseStep = step;
+  const panels = [
+    '<h3>1．虛構提問</h3><blockquote>' + question + '</blockquote>',
+    '<h3>2．檢索虛構文件</h3><ol class="case-docs"><li><mark>期末專案說明</mark> · 找到分組規定</li><li>課堂講義通知 · 內容只有講義存放位置</li></ol>',
+    '<h3>3．取得證據 · 虛構課程文件</h3><blockquote class="evidence"><mark>' + grouping + '</mark>' + deliverables + '</blockquote>',
+    '<h3>4．生成回答 · 虛構模型輸出</h3><p>' + answer + '</p><p class="context-note">依據：虛構《期末專案說明》中的「個人或兩人一組，最多兩人」。</p>'
+  ];
+  // All panel markup and text are local constants, with no user-provided HTML.
+  caseView.innerHTML = panels[step];
+  caseButtons.forEach((button, index) => button.setAttribute('aria-pressed', String(index === step)));
+  caseNext.textContent = step === panels.length - 1 ? '重新示範 ↺' : '下一步 →';
+}
+
+function clearFeedback() {
+  claims.forEach(({id}) => {
+    const label = quiz.elements.namedItem(id).closest('label');
+    label.classList.remove('supported', 'unsupported');
+    label.querySelector('.verdict').textContent = '';
+  });
+  quizFeedback.textContent = '勾選文件支持的主張，然後檢查。';
+}
+
+function showSlide(index) {
+  if (index < 0 || index >= slides.length || index === current) return;
+  slides[current].querySelector('details').open = false;
+  if (current === 6) renderCase(0);
+  if (current === 7) { quiz.reset(); clearFeedback(); }
+  slides[current].hidden = true;
+  current = index;
+  slides[current].hidden = false;
+  previous.disabled = current === 0;
+  next.disabled = current === slides.length - 1;
+  document.querySelector('#count').textContent = (current + 1) + ' / ' + slides.length;
+  document.querySelector('#progress').value = current + 1;
+  document.querySelector('#part').textContent = current < 6 ? '核心概念' : '示範與練習';
+  window.scrollTo(0, 0);
+  slides[current].querySelector('h2').focus({preventScroll:true});
+}
+
+document.querySelector('#quiz-evidence').textContent = grouping + deliverables;
+renderCase(0);
+clearFeedback();
+caseButtons.forEach(button => button.addEventListener('click', () => renderCase(Number(button.dataset.case))));
+caseNext.addEventListener('click', () => renderCase((caseStep + 1) % caseButtons.length));
+quiz.addEventListener('change', clearFeedback);
+quiz.addEventListener('submit', event => {
+  event.preventDefault();
+  const correct = claims.map(({id,supported,note}) => {
+    const input = quiz.elements.namedItem(id);
+    const label = input.closest('label');
+    label.classList.add(supported ? 'supported' : 'unsupported');
+    label.querySelector('.verdict').textContent = note;
+    return input.checked === supported;
+  }).every(Boolean);
+  quizFeedback.textContent = correct ? '答對了。兩項有支持，三人組隊與文件矛盾。' : '再比對標示的原句。注意「最多兩人」是上限。';
+});
+document.querySelector('[data-go]').addEventListener('click', () => showSlide(1));
+previous.addEventListener('click', () => showSlide(current - 1));
+next.addEventListener('click', () => showSlide(current + 1));
+document.addEventListener('keydown', event => {
+  if (event.altKey || event.ctrlKey || event.shiftKey || event.metaKey) return;
+  if (event.key === 'Escape') {
+    const sources = slides[current].querySelector('details');
+    if (sources.open) {
+      sources.open = false;
+      sources.querySelector('summary').focus({preventScroll:true});
+    }
+    return;
+  }
+  if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+  event.preventDefault();
+  showSlide(current + (event.key === 'ArrowRight' ? 1 : -1));
+});
+</script>
+</body>
+</html>

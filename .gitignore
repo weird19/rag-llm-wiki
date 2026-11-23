@@ -1,0 +1,19 @@
+# 原始論文與資料
+raw/
+
+# Python 暫存
+__pycache__/
+*.pyc
+.venv/
+
+# 系統與編輯器暫存
+.DS_Store
+Thumbs.db
+
+# 本機環境與機密資訊
+.env
+.env.*
+!.env.example
+
+# HTML 簡報備份
+slides/*.before-*.html
